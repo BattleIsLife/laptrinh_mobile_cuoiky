@@ -3,7 +3,7 @@ import { getMyProfile, updateMyProfile } from '../controllers/profile.controller
 import { verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
-router.get('/api/users/:id/profile', verifyToken, getMyProfile);
-router.patch('/api/users/:id/profile', verifyToken, updateMyProfile);
+router.get('/api/users/me/profile', verifyToken, getMyProfile);
+router.patch('/api/users/me/profile', verifyToken, updateMyProfile);
 
 export default router;

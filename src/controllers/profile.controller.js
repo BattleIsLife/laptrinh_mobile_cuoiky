@@ -9,7 +9,8 @@ const PROFILE_FIELDS = new Set([
 ]);
 
 const isValidUserId = (id) => {
-    if (!/^[1-9]\d*$/.test(id)) {
+    const userId = String(id);
+    if (!/^[1-9]\d*$/.test(userId)) {
         return false;
     }
     return BigInt(id) <= 18446744073709551615n;
@@ -33,46 +34,43 @@ const isValidDate = (value) => {
 
 const validateChanges = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        return 'Request body must be a JSON object';
+        return 'Request body phải là một object JSON';
     }
 
     const entries = Object.entries(body);
     if (entries.length === 0) {
-        return 'At least one profile field is required';
+        return 'ít nhất một trường hợp lệ là bắt buộc';
     }
 
     if (entries.some(([field]) => !PROFILE_FIELDS.has(field))) {
-        return 'Request contains an unsupported profile field';
+        return 'Request body chỉ được chứa các trường: full_name, date_of_birth, occupation, number_of_dependents, monthly_income';
     }
 
     for (const [field, value] of entries) {
         if (field === 'full_name'
             && (typeof value !== 'string' || value.trim().length === 0 || value.length > 100)) {
-            return 'full_name must be a non-empty string of at most 100 characters';
+            return 'full_name phải là một chuỗi không rỗng, tối đa 100 ký tự';
         }
 
         if (field === 'date_of_birth' && value !== null && !isValidDate(value)) {
-            return 'date_of_birth must be a valid YYYY-MM-DD date or null';
+            return 'date_of_birth phải là một chuỗi ngày hợp lệ theo định dạng YYYY-MM-DD hoặc null';
         }
 
         if (field === 'occupation'
             && value !== null
             && (typeof value !== 'string' || value.length > 100)) {
-            return 'occupation must be a string of at most 100 characters or null';
+            return 'occupation phải là một chuỗi tối đa 100 ký tự hoặc null';
         }
 
         if (field === 'number_of_dependents'
             && (!Number.isInteger(value) || value < 0 || value > 255)) {
-            return 'number_of_dependents must be an integer between 0 and 255';
+            return 'number_of_dependents phải là một số nguyên không âm, tối đa 255';
         }
 
         if (field === 'monthly_income'
-            && (typeof value !== 'number'
-                || !Number.isFinite(value)
-                || value < 0
-                || value > 9999999999999.99
-                || Number(value.toFixed(2)) !== value)) {
-            return 'monthly_income must be a non-negative number with at most two decimal places';
+            && (typeof value !== 'string'
+                || !/^(0|[1-9]\d{0,12})(\.\d{1,2})?$/.test(value))) {
+            return 'monthly_income phải là chuỗi số không âm, tối đa 13 chữ số trước dấu thập phân và tối đa 2 chữ số sau dấu thập phân';
         }
     }
 
@@ -80,32 +78,28 @@ const validateChanges = (body) => {
 };
 
 export const getMyProfile = async (req, res) => {
-    if (!isValidUserId(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid user id' });
-    }
-    if (String(req.user.id) !== String(req.params.id)) {
-        return res.status(403).json({ message: 'Bạn không có quyền truy cập hồ sơ của người khác' });
+    const userId = req.user?.id;
+    if (!isValidUserId(userId)) {
+        return res.status(401).json({ status: 'false', message: 'Token không chứa ID người dùng hợp lệ' });
     }
 
     try {
-        const profile = await ProfileModel.getProfile(req.params.id);
+        const profile = await ProfileModel.getProfile(userId);
         if (!profile) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Người dùng không tồn tại' });
         }
 
         return res.status(200).json({ data: profile });
     } catch (error) {
         console.error('Failed to get profile:', error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
     }
 };
 
 export const updateMyProfile = async (req, res) => {
-    if (!isValidUserId(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid user id' });
-    }
-    if (String(req.user.id) !== String(req.params.id)) {
-        return res.status(403).json({ message: 'Bạn không có quyền truy cập hồ sơ của người khác' });
+    const userId = req.user?.id;
+    if (!isValidUserId(userId)) {
+        return res.status(401).json({ status: 'false', message: 'Token không chứa ID người dùng hợp lệ' });
     }
 
     const validationError = validateChanges(req.body);
@@ -114,18 +108,18 @@ export const updateMyProfile = async (req, res) => {
     }
 
     try {
-        await ProfileModel.updateProfile(req.params.id, req.body);
-        const profile = await ProfileModel.getProfile(req.params.id);
+        await ProfileModel.updateProfile(userId, req.body);
+        const profile = await ProfileModel.getProfile(userId);
         if (!profile) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Người dùng không tồn tại' });
         }
 
         return res.status(200).json({
-            message: 'Profile updated successfully',
+            message: 'Hồ sơ đã được cập nhật thành công',
             data: profile
         });
     } catch (error) {
         console.error('Failed to update profile:', error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
     }
 };
