@@ -87,6 +87,9 @@ export const getMyProfile = async (req, res) => {
     if (!isValidUserId(req.params.id)) {
         return res.status(400).json({ message: 'Invalid user id' });
     }
+    if (String(req.user.id) !== String(req.params.id)) {
+        return res.status(403).json({ message: 'Bạn không có quyền truy cập hồ sơ của người khác' });
+    }
 
     try {
         const profile = await ProfileModel.getProfile(req.params.id);
@@ -104,6 +107,9 @@ export const getMyProfile = async (req, res) => {
 export const updateMyProfile = async (req, res) => {
     if (!isValidUserId(req.params.id)) {
         return res.status(400).json({ message: 'Invalid user id' });
+    }
+    if (String(req.user.id) !== String(req.params.id)) {
+        return res.status(403).json({ message: 'Bạn không có quyền truy cập hồ sơ của người khác' });
     }
 
     const validationError = validateChanges(req.body);
