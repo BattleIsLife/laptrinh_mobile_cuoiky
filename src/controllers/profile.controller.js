@@ -12,10 +12,6 @@ const isValidUserId = (id) => {
     if (!/^[1-9]\d*$/.test(id)) {
         return false;
     }
-    if (String(req.user.id) !== String(id)) {
-        return res.status(403).json({ message: 'Bạn không có quyền truy cập hồ sơ của người khác' });
-    }
-
     return BigInt(id) <= 18446744073709551615n;
 };
 
